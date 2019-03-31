@@ -49,7 +49,7 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth, graphqlOptions })
     function createExtensions() {
         return `
             type Token {
-                id(email: String, password: String): String
+                id(email: String, password: String, customToken: String): String
                 verify(idToken: String, sessionToken: String, checkRevoked: Boolean): Boolean
                 session(idToken: String!, expiresIn: Int): String
                 custom(uid: ID!, claims: String): String
@@ -118,8 +118,15 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth, graphqlOptions })
     }
 
     async function id(root, args) {
-        const idToken = await rest.verifyPassword(args.email, args.password);
-        return idToken;
+        let tokenData;
+        if (typeof args.email === 'string' && typeof args.password === 'string') {
+            tokenData = await rest.verifyPassword(args.email, args.password);
+        } else if (typeof args.customToken === 'string') {
+            tokenData = await rest.verifyCustomToken(args.customToken);
+        } else {
+            throw new Error('Either email and password must be supplied or "customToken"');
+        }
+        return tokenData.idToken;
     }
 
     async function verify(root, args) {
