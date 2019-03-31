@@ -36,7 +36,7 @@ function createRestInterface(apiKey) {
         return response;
     }
 
-    function post(uri, responseType, data) {
+    async function post(uri, responseType, data) {
         if (!apiKey) {
             throw new Error('No API key available. Unable to make call to API');
         }
