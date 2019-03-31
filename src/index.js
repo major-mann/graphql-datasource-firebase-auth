@@ -3,9 +3,13 @@ module.exports = createGraphqlFirebaseAuthSource;
 const LIMIT = 200;
 
 const createGraphqlDatasource = require('@major-mann/graphql-datasource-base');
+const { mergeSchemas } = require('graphql-tools');
+const createRest = require('./rest.js');
+
 createGraphqlFirebaseAuthSource.graphql = createGraphqlDatasource.graphql;
 
-async function createGraphqlFirebaseAuthSource({ auth, graphqlOptions }) {
+async function createGraphqlFirebaseAuthSource({ apiKey, auth, graphqlOptions }) {
+    const rest = createRest(apiKey);
     const definitions = createDefinitions();
     const source = await createGraphqlDatasource({
         data: loadCollection,
@@ -13,7 +17,60 @@ async function createGraphqlFirebaseAuthSource({ auth, graphqlOptions }) {
         graphqlOptions,
         rootTypes: ['User']
     });
-    return source;
+
+    const extensions = createExtensions();
+
+    const merged = mergeSchemas({
+        schemas: [source, extensions],
+        resolvers: {
+            User: {
+                link: { resolve: user => user }
+            },
+            UserLink: {
+                signIn: { resolve: signIn },
+                verification: { resolve: verification },
+                passwordReset: { resolve: passwordReset }
+            },
+            Token: {
+                id: { resolve: id },
+                verify: { resolve: verify },
+                custom: { resolve: custom },
+                session: { resolve: session },
+                revoke: { resolve: revoke }
+            },
+            Query: {
+                token: { resolve: () => ({}) }
+            }
+        }
+    });
+
+    return merged;
+
+    function createExtensions() {
+        return `
+            type Token {
+                id(email: String, password: String): String
+                verify(idToken: String, sessionToken: String, checkRevoked: Boolean): Boolean
+                session(idToken: String!, expiresIn: Int): String
+                custom(uid: ID!, claims: String): String
+                revoke(uid: ID): Boolean
+            }
+
+            type UserLink {
+                verification: String!
+                signIn: String!
+                passwordReset: String!
+            }
+
+            extend type User {
+                link: UserLink
+            }
+
+            type Query {
+                token: Token
+            }
+        `;
+    }
 
     function createDefinitions() {
         return [
@@ -43,6 +100,61 @@ async function createGraphqlFirebaseAuthSource({ auth, graphqlOptions }) {
             }
             `
         ];
+    }
+
+    async function signIn(user, args) {
+        const link = await auth.generateSignInWithEmailLink(user.email);
+        return link;
+    }
+
+    async function verification(user, args) {
+        const link = await auth.generateEmailVerificationLink(user.email);
+        return link;
+    }
+
+    async function passwordReset(user, args) {
+        const link = await auth.generatePasswordResetLink(user.email);
+        return link;
+    }
+
+    async function id(root, args) {
+        const idToken = await rest.verifyPassword(args.email, args.password);
+        return idToken;
+    }
+
+    async function verify(root, args) {
+        if (args.idToken) {
+            await auth.verifyIdToken(args.idToken, Boolean(args.checkRevoked));
+        } else if (args.sessionToken) {
+            await auth.verifySessionCookie(args.sessionToken, Boolean(args.checkRevoked));
+        } else {
+            throw new Error('MUST supply either idToken or session token');
+        }
+    }
+
+    async function custom(root, args) {
+        const claims = parseClaims(args.claims);
+        const token = await auth.createCustomToken(args.uid, claims);
+        return token;
+
+        function parseClaims(claimsStr) {
+            try {
+                return args.claims && JSON.parse(claimsStr);
+            } catch (ex) {
+                return undefined;
+            }
+        }
+    }
+
+    async function session(root, args) {
+        const token = await auth.createCustomToken(args.uid, {
+            expiresIn: args.expiresIn
+        });
+        return token;
+    }
+
+    async function revoke(root, args) {
+        await auth.revokeRefreshTokens(args.uid);
     }
 
     async function loadCollection() {
@@ -84,32 +196,6 @@ async function createGraphqlFirebaseAuthSource({ auth, graphqlOptions }) {
         async function find(id) {
             try {
                 const user = await auth.getUser(id);
-                return user;
-            } catch (ex) {
-                if (ex.code === 'auth/user-not-found') {
-                    return undefined;
-                } else {
-                    throw ex;
-                }
-            }
-        }
-
-        async function findByEmail(email) {
-            try {
-                const user = await auth.getUserByEmail(email);
-                return user;
-            } catch (ex) {
-                if (ex.code === 'auth/user-not-found') {
-                    return undefined;
-                } else {
-                    throw ex;
-                }
-            }
-        }
-
-        async function findByPhoneNumber(phoneNumber) {
-            try {
-                const user = await auth.getUserByPhoneNumber(phoneNumber);
                 return user;
             } catch (ex) {
                 if (ex.code === 'auth/user-not-found') {
@@ -302,6 +388,32 @@ async function createGraphqlFirebaseAuthSource({ auth, graphqlOptions }) {
                     return last;
                 } else {
                     return LIMIT;
+                }
+            }
+        }
+
+        async function findByEmail(email) {
+            try {
+                const user = await auth.getUserByEmail(email);
+                return user;
+            } catch (ex) {
+                if (ex.code === 'auth/user-not-found') {
+                    return undefined;
+                } else {
+                    throw ex;
+                }
+            }
+        }
+
+        async function findByPhoneNumber(phoneNumber) {
+            try {
+                const user = await auth.getUserByPhoneNumber(phoneNumber);
+                return user;
+            } catch (ex) {
+                if (ex.code === 'auth/user-not-found') {
+                    return undefined;
+                } else {
+                    throw ex;
                 }
             }
         }
