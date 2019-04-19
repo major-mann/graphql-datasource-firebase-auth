@@ -2,88 +2,14 @@ module.exports = createGraphqlFirebaseAuthSource;
 
 const LIMIT = 200;
 
+const { SchemaComposer } = require('graphql-compose');
 const createGraphqlDatasource = require('@major-mann/graphql-datasource-base');
-const { mergeSchemas } = require('graphql-tools');
 const createRest = require('./rest.js');
 
-createGraphqlFirebaseAuthSource.graphql = createGraphqlDatasource.graphql;
-
-async function createGraphqlFirebaseAuthSource({ apiKey, auth, graphqlOptions }) {
+async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
     const rest = createRest(apiKey);
-    const definitions = createDefinitions();
     const source = await createGraphqlDatasource({
-        data: loadCollection,
-        definitions,
-        graphqlOptions,
-        rootTypes: ['User']
-    });
-
-    const extensions = createExtensions();
-
-    const merged = mergeSchemas({
-        schemas: [source, extensions],
-        resolvers: {
-            User: {
-                link: { resolve: user => user }
-            },
-            UserLink: {
-                signIn: { resolve: signIn },
-                verification: { resolve: verification },
-                passwordReset: { resolve: passwordReset }
-            },
-            Token: {
-                id: { resolve: id },
-                verify: { resolve: verify },
-                custom: { resolve: custom },
-                session: { resolve: session },
-                revoke: { resolve: revoke }
-            },
-            Query: {
-                token: { resolve: () => ({}) }
-            }
-        }
-    });
-
-    return merged;
-
-    function createExtensions() {
-        return `
-            type IdTokenResponse {
-                idToken: String!
-                refreshToken: String!
-                expiresIn: Int!
-                email: String!
-                localId: String!
-                registered: Boolean!
-            }
-
-            type Token {
-                id(email: String, password: String, customToken: String): IdTokenResponse
-                verify(idToken: String, sessionToken: String, checkRevoked: Boolean): Boolean
-                session(idToken: String!, expiresIn: Int): String
-                custom(uid: ID!, claims: String): String
-                revoke(uid: ID): Boolean
-            }
-
-            type UserLink {
-                verification: String!
-                signIn: String!
-                passwordReset: String!
-            }
-
-            extend type User {
-                link: UserLink
-            }
-
-            type Query {
-                token: Token
-            }
-        `;
-    }
-
-    function createDefinitions() {
-        return [
-            `
+        definitions: `
             type User {
                 uid: ID!
                 email: String
@@ -97,7 +23,7 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth, graphqlOptions })
                 password: String
                 emailVerified: Boolean
                 phoneNumber: String
-                disabled: Boolean!
+                disabled: Boolean
             }
 
             input UserUpdateInput {
@@ -107,21 +33,118 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth, graphqlOptions })
                 phoneNumber: String
                 disabled: Boolean
             }
-            `
-        ];
-    }
+        `,
+        rootTypes: ['User'],
+        data: loadCollection
+    });
 
-    async function signIn(user, args) {
+    const composer = new SchemaComposer(source);
+
+    composer.createObjectTC({
+        name: 'IdTokenResponse',
+        fields: {
+            idToken: 'String!',
+            refreshToken: 'String!',
+            expiresIn: 'Int!',
+            email: 'String!',
+            localId: 'String!',
+            registered: 'Boolean!'
+        }
+    });
+
+    composer.createObjectTC({
+        name: 'UserLink',
+        fields: {
+            verification: {
+                type: 'String!',
+                resolve: verification
+            },
+            signIn: {
+                type: 'String!',
+                resolve: signIn
+            },
+            passwordReset: {
+                type: 'String!',
+                resolve: passwordReset
+            }
+        }
+    });
+
+    composer.getOTC('User').addFields({
+        link: {
+            type: 'UserLink',
+            resolve: user => user
+        }
+    });
+
+    // TODO: Token resolvers!
+    composer.createObjectTC({
+        name: 'Token',
+        fields: {
+            id: {
+                type: 'IdTokenResponse',
+                resolve: id,
+                args: {
+                    email: 'String',
+                    password: 'String',
+                    customToken: 'String'
+                }
+            },
+            verify: {
+                type: 'Boolean',
+                resolve: verify,
+                args: {
+                    idToken: 'String',
+                    sessionToken: 'String',
+                    checkRevoked: 'Boolean'
+                }
+            },
+            session: {
+                type: 'String',
+                resolve: session,
+                args: {
+                    idToken: 'String!',
+                    expiresIn: 'Int'
+                }
+            },
+            custom: {
+                type: 'String',
+                resolve: custom,
+                args: {
+                    uid: 'ID!',
+                    claims: String
+                }
+            },
+            revoke: {
+                type: 'Boolean',
+                resolve: revoke,
+                args: {
+                    uid: 'ID'
+                }
+            }
+        }
+    });
+
+    composer.Query.addFields({
+        token: {
+            type: 'Token',
+            resolve: () => ({})
+        }
+    });
+
+    return composer.buildSchema();
+
+    async function signIn(user) {
         const link = await auth.generateSignInWithEmailLink(user.email);
         return link;
     }
 
-    async function verification(user, args) {
+    async function verification(user) {
         const link = await auth.generateEmailVerificationLink(user.email);
         return link;
     }
 
-    async function passwordReset(user, args) {
+    async function passwordReset(user) {
         const link = await auth.generatePasswordResetLink(user.email);
         return link;
     }
