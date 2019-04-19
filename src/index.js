@@ -112,7 +112,7 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
                 resolve: custom,
                 args: {
                     uid: 'ID!',
-                    claims: String
+                    claims: 'String'
                 }
             },
             revoke: {
