@@ -77,7 +77,6 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
         }
     });
 
-    // TODO: Token resolvers!
     composer.createObjectTC({
         name: 'Token',
         fields: {
