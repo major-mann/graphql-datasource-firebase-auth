@@ -185,7 +185,7 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
     }
 
     async function session(root, args) {
-        const token = await auth.createCustomToken(args.uid, {
+        const token = await auth.createSessionCookie(args.idToken, {
             expiresIn: args.expiresIn
         });
         return token;
