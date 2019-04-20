@@ -162,9 +162,11 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
 
     async function verify(root, args) {
         if (args.idToken) {
-            await auth.verifyIdToken(args.idToken, Boolean(args.checkRevoked));
+            const claims = await auth.verifyIdToken(args.idToken, Boolean(args.checkRevoked));
+            return claims;
         } else if (args.sessionToken) {
-            await auth.verifySessionCookie(args.sessionToken, Boolean(args.checkRevoked));
+            const claims = await auth.verifySessionCookie(args.sessionToken, Boolean(args.checkRevoked));
+            return claims;
         } else {
             throw new Error('MUST supply either idToken or session token');
         }
