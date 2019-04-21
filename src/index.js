@@ -52,22 +52,27 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
         }
     });
 
-    composer.createObjectTC({
-        name: 'UserLink',
-        fields: {
-            verification: {
-                type: 'String!',
-                resolve: verification
-            },
-            signIn: {
-                type: 'String!',
-                resolve: signIn
-            },
-            passwordReset: {
-                type: 'String!',
-                resolve: passwordReset
-            }
-        }
+    const userLinkType = composer.createObjectTC({ name: 'UserLink' })
+        .addResolver({
+            name: '$verification',
+            type: 'String!',
+            resolve: verification
+        })
+        .addResolver({
+            name: '$signIn',
+            type: 'String!',
+            resolve: signIn
+        })
+        .addResolver({
+            name: '$passwordReset',
+            type: 'String!',
+            resolve: passwordReset
+        });
+
+    userLinkType.addFields({
+        verification: userLinkType.getResolver('$verification'),
+        signIn: userLinkType.getResolver('$signIn'),
+        passwordReset: userLinkType.getResolver('$passwordReset')
     });
 
     composer.getOTC('User').addFields({
@@ -77,51 +82,59 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
         }
     });
 
-    composer.createObjectTC({
-        name: 'Token',
-        fields: {
-            id: {
-                type: 'IdTokenResponse',
-                resolve: id,
-                args: {
-                    email: 'String',
-                    password: 'String',
-                    customToken: 'String'
-                }
-            },
-            verify: {
-                type: 'Boolean',
-                resolve: verify,
-                args: {
-                    idToken: 'String',
-                    sessionToken: 'String',
-                    checkRevoked: 'Boolean'
-                }
-            },
-            session: {
-                type: 'String',
-                resolve: session,
-                args: {
-                    idToken: 'String!',
-                    expiresIn: 'Int'
-                }
-            },
-            custom: {
-                type: 'String',
-                resolve: custom,
-                args: {
-                    uid: 'ID!',
-                    claims: 'String'
-                }
-            },
-            revoke: {
-                type: 'Boolean',
-                resolve: revoke,
-                args: {
-                    uid: 'ID'
-                }
+    const tokenType = composer.createObjectTC({ name: 'Token' })
+        .addResolver({
+            name: '$id',
+            type: 'IdTokenResponse',
+            resolve: id,
+            args: {
+                email: 'String',
+                password: 'String',
+                customToken: 'String'
             }
-        }
+        })
+        .addResolver({
+            name: '$verify',
+            type: 'Boolean',
+            resolve: verify,
+            args: {
+                idToken: 'String',
+                sessionToken: 'String',
+                checkRevoked: 'Boolean'
+            }
+        })
+        .addResolver({
+            name: '$session',
+            type: 'String',
+            resolve: session,
+            args: {
+                idToken: 'String!',
+                expiresIn: 'Int'
+            }
+        })
+        .addResolver({
+            name: '$custom',
+            type: 'String',
+            resolve: custom,
+            args: {
+                uid: 'ID!',
+                claims: 'String'
+            }
+        })
+        .addResolver({
+            name: '$revoke',
+            type: 'Boolean',
+            resolve: revoke,
+            args: {
+                uid: 'ID'
+            }
+        });
+    tokenType.addFields({
+        id: tokenType.getResolver('$id'),
+        verify: tokenType.getResolver('$verify'),
+        session: tokenType.getResolver('$session'),
+        custom: tokenType.getResolver('$custom'),
+        revoke: tokenType.getResolver('$revoke')
     });
 
     composer.Query.addFields({
@@ -131,24 +144,24 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
         }
     });
 
-    return composer.buildSchema();
+    return composer;
 
-    async function signIn(user) {
-        const link = await auth.generateSignInWithEmailLink(user.email);
+    async function signIn({ source }) {
+        const link = await auth.generateSignInWithEmailLink(source.email);
         return link;
     }
 
-    async function verification(user) {
-        const link = await auth.generateEmailVerificationLink(user.email);
+    async function verification({ source }) {
+        const link = await auth.generateEmailVerificationLink(source.email);
         return link;
     }
 
-    async function passwordReset(user) {
-        const link = await auth.generatePasswordResetLink(user.email);
+    async function passwordReset({ source }) {
+        const link = await auth.generatePasswordResetLink(source.email);
         return link;
     }
 
-    async function id(root, args) {
+    async function id({ args }) {
         let tokenData;
         if (typeof args.email === 'string' && typeof args.password === 'string') {
             tokenData = await rest.verifyPassword(args.email, args.password);
@@ -160,7 +173,7 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
         return tokenData;
     }
 
-    async function verify(root, args) {
+    async function verify({ args }) {
         if (args.idToken) {
             const claims = await auth.verifyIdToken(args.idToken, Boolean(args.checkRevoked));
             return claims;
@@ -172,7 +185,7 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
         }
     }
 
-    async function custom(root, args) {
+    async function custom({ args }) {
         const claims = parseClaims(args.claims);
         const token = await auth.createCustomToken(args.uid, claims);
         return token;
@@ -186,14 +199,14 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
         }
     }
 
-    async function session(root, args) {
+    async function session({ args }) {
         const token = await auth.createSessionCookie(args.idToken, {
             expiresIn: args.expiresIn
         });
         return token;
     }
 
-    async function revoke(root, args) {
+    async function revoke({ args }) {
         await auth.revokeRefreshTokens(args.uid);
     }
 
