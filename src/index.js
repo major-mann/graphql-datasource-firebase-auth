@@ -38,7 +38,8 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
         data: loadCollection
     });
 
-    const composer = new SchemaComposer(source);
+    const composer = new SchemaComposer();
+    composer.merge(source);
 
     composer.createObjectTC({
         name: 'IdTokenResponse',
