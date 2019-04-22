@@ -2,13 +2,12 @@ module.exports = createGraphqlFirebaseAuthSource;
 
 const LIMIT = 200;
 
-const { SchemaComposer } = require('graphql-compose');
 const createGraphqlDatasource = require('@major-mann/graphql-datasource-base');
 const createRest = require('./rest.js');
 
 async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
     const rest = createRest(apiKey);
-    const source = await createGraphqlDatasource({
+    const composer = await createGraphqlDatasource({
         definitions: `
             type User {
                 uid: ID!
@@ -16,6 +15,13 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
                 emailVerified: Boolean
                 phoneNumber: String
                 disabled: Boolean!
+                link: UserLink!
+            }
+
+            type UserLink {
+                verification: String!
+                signIn: String!
+                passwordReset: String!
             }
 
             input UserInput {
@@ -38,9 +44,6 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
         data: loadCollection
     });
 
-    const composer = new SchemaComposer();
-    composer.merge(source);
-
     composer.createObjectTC({
         name: 'IdTokenResponse',
         fields: {
@@ -53,35 +56,34 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
         }
     });
 
-    const userLinkType = composer.createObjectTC({ name: 'UserLink' })
-        .addResolver({
-            name: '$verification',
-            type: 'String!',
-            resolve: verification
-        })
-        .addResolver({
-            name: '$signIn',
-            type: 'String!',
-            resolve: signIn
-        })
-        .addResolver({
-            name: '$passwordReset',
-            type: 'String!',
-            resolve: passwordReset
+    const userLinkType = composer.getOTC('UserLink');
+    userLinkType.addResolver({
+        name: '$verification',
+        type: 'String!',
+        resolve: verification
+    });
+    userLinkType.addResolver({
+        name: '$signIn',
+        type: 'String!',
+        resolve: signIn
+    });
+    userLinkType.addResolver({
+        name: '$passwordReset',
+        type: 'String!',
+        resolve: passwordReset
+    });
+
+    userLinkType.setField('verification', userLinkType.getResolver('$verification'));
+    userLinkType.setField('signIn', userLinkType.getResolver('$signIn'));
+    userLinkType.setField('passwordReset', userLinkType.getResolver('$passwordReset'));
+
+    composer.getOTC('User')
+        .addFields({
+            link: {
+                type: 'UserLink',
+                resolve: user => user
+            }
         });
-
-    userLinkType.addFields({
-        verification: userLinkType.getResolver('$verification'),
-        signIn: userLinkType.getResolver('$signIn'),
-        passwordReset: userLinkType.getResolver('$passwordReset')
-    });
-
-    composer.getOTC('User').addFields({
-        link: {
-            type: 'UserLink',
-            resolve: user => user
-        }
-    });
 
     const tokenType = composer.createObjectTC({ name: 'Token' })
         .addResolver({
@@ -130,6 +132,7 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
                 uid: 'ID'
             }
         });
+
     tokenType.addFields({
         id: tokenType.getResolver('$id'),
         verify: tokenType.getResolver('$verify'),

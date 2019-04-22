@@ -1,6 +1,6 @@
 {
     "name": "@major-mann/graphql-datasource-firebase-auth",
-    "version": "0.0.14",
+    "version": "0.0.15",
     "description": "A graphql interface onto firebase auth",
     "main": "src/index.js",
     "keywords": [
