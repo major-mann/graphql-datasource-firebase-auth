@@ -1,6 +1,6 @@
 {
     "name": "@major-mann/graphql-datasource-firebase-auth",
-    "version": "0.0.16",
+    "version": "0.0.17",
     "description": "A graphql interface onto firebase auth",
     "main": "src/index.js",
     "keywords": [
@@ -11,9 +11,9 @@
     "author": "Calvin Mann <calvinmann+npm@gmail.com>",
     "license": "MIT",
     "dependencies": {
-        "@major-mann/graphql-datasource-base": "^0.0.19",
-        "firebase-admin": "^7.3.0",
-        "graphql-compose": "^7.0.2",
-        "node-fetch": "^2.3.0"
+        "@major-mann/graphql-datasource-base": "^0.0.21",
+        "firebase-admin": "^7.4.0",
+        "graphql-compose": "^7.0.3",
+        "node-fetch": "^2.6.0"
     }
 }
