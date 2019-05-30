@@ -11,7 +11,7 @@
     "author": "Calvin Mann <calvinmann+npm@gmail.com>",
     "license": "MIT",
     "dependencies": {
-        "@major-mann/graphql-datasource-base": "^0.0.21",
+        "@major-mann/graphql-datasource-base": "^0.0.22",
         "firebase-admin": "^7.4.0",
         "graphql-compose": "^7.0.3",
         "node-fetch": "^2.6.0"
