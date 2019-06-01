@@ -13,7 +13,9 @@
     "dependencies": {
         "@major-mann/graphql-datasource-base": "^0.0.25",
         "firebase-admin": "^7.4.0",
-        "graphql-compose": "^7.0.3",
         "node-fetch": "^2.6.0"
+    },
+    "peerDependencies": {
+        "graphql-compose": "^7.0.3"
     }
 }
