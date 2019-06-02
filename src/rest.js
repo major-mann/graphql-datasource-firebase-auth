@@ -70,7 +70,9 @@ function createRestInterface(apiKey) {
                     `Expected ${JSON.stringify(responseType)}`);
             }
         } else if (body && typeof body === 'object') {
-            body = body.error || body;
+            if (body.error && typeof body.error === 'object') {
+                body = body.error;
+            }
             throw Object.assign(new Error(body.message), body);
         } else {
             throw new Error(body);
