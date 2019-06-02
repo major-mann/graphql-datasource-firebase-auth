@@ -56,6 +56,18 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
         }
     });
 
+    composer.createObjectTC({
+        name: 'RefreshTokenResponse',
+        fields: {
+            idToken: 'String!',
+            refreshToken: 'String!',
+            expiresIn: 'String!',
+            tokenType: 'String!',
+            userId: 'String!',
+            projectId: 'String!'
+        }
+    });
+
     const userLinkType = composer.getOTC('UserLink');
     userLinkType.addResolver({
         name: '$verification',
@@ -77,13 +89,7 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
     userLinkType.setField('signIn', userLinkType.getResolver('$signIn'));
     userLinkType.setField('passwordReset', userLinkType.getResolver('$passwordReset'));
 
-    composer.getOTC('User')
-        .addFields({
-            link: {
-                type: 'UserLink',
-                resolve: user => user
-            }
-        });
+    composer.getOTC('User').addFields({ link: { type: 'UserLink', resolve: user => user } });
 
     const tokenType = composer.createObjectTC({ name: 'Token' })
         .addResolver({
@@ -94,6 +100,14 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
                 email: 'String',
                 password: 'String',
                 customToken: 'String'
+            }
+        })
+        .addResolver({
+            name: '$refresh',
+            type: 'RefreshTokenResponse',
+            resolve: refresh,
+            args: {
+                refreshToken: 'String'
             }
         })
         .addResolver({
@@ -128,26 +142,19 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
             name: '$revoke',
             type: 'Boolean',
             resolve: revoke,
-            args: {
-                uid: 'ID'
-            }
+            args: { uid: 'ID' }
         });
 
     tokenType.addFields({
         id: tokenType.getResolver('$id'),
+        refresh: tokenType.getResolver('$refresh'),
         verify: tokenType.getResolver('$verify'),
         session: tokenType.getResolver('$session'),
         custom: tokenType.getResolver('$custom'),
         revoke: tokenType.getResolver('$revoke')
     });
 
-    composer.Query.addFields({
-        token: {
-            type: 'Token',
-            resolve: () => ({})
-        }
-    });
-
+    composer.Query.addFields({ token: { type: 'Token', resolve: () => ({}) } });
     return composer;
 
     async function signIn({ source }) {
@@ -175,6 +182,11 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
             throw new Error('Either email and password must be supplied or "customToken"');
         }
         return tokenData;
+    }
+
+    async function refresh({ args }) {
+        const refreshTokenData = await rest.refreshIdToken(args.refreshToken);
+        return refreshTokenData;
     }
 
     async function verify({ args }) {

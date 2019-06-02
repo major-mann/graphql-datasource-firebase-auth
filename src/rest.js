@@ -4,6 +4,7 @@ const VERIFY_PASSWORD_URI = apiKey => `https://www.googleapis.com/identitytoolki
     `?key=${encodeURIComponent(apiKey)}`;
 const VERIFY_CUSTOM_TOKEN_URI = apiKey => `https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken` +
     `?key=${apiKey}`
+const REFRESH_ID_TOKEN_URI = apiKey => `https://securetoken.googleapis.com/v1/token?key=${apiKey}`;
 
 const VERIFY_PASSWORD_RESPONSE = 'identitytoolkit#VerifyPasswordResponse';
 const VERIFY_CUSTOM_TOKEN_RESPONSE = 'identitytoolkit#VerifyCustomTokenResponse';
@@ -13,8 +14,10 @@ const fetch = require('node-fetch');
 function createRestInterface(apiKey) {
     const verifyPasswordUri = VERIFY_PASSWORD_URI(apiKey);
     const verifyCustomTokenUri = VERIFY_CUSTOM_TOKEN_URI(apiKey);
+    const refreshIdTokenUri = REFRESH_ID_TOKEN_URI(apiKey);
 
     return {
+        refreshIdToken,
         verifyPassword,
         verifyCustomToken
     };
@@ -32,6 +35,14 @@ function createRestInterface(apiKey) {
         const response = await post(verifyCustomTokenUri, VERIFY_CUSTOM_TOKEN_RESPONSE, {
             token,
             returnSecureToken: true
+        });
+        return response;
+    }
+
+    async function refreshIdToken(refreshToken) {
+        const response = await post(refreshIdTokenUri, undefined, {
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken
         });
         return response;
     }
@@ -55,8 +66,8 @@ function createRestInterface(apiKey) {
             if (body && body.kind === responseType) {
                 return body;
             } else {
-                throw new Error(`Invalid response "${body && body.kind}" received. ` +
-                    `Expected ${responseType}`);
+                throw new Error(`Invalid response kind ${JSON.stringify(body && body.kind)} received. ` +
+                    `Expected ${JSON.stringify(responseType)}`);
             }
         } else if (typeof body === 'object') {
             throw Object.assign(new Error(), body);
