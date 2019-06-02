@@ -70,10 +70,11 @@ function createRestInterface(apiKey) {
                     `Expected ${JSON.stringify(responseType)}`);
             }
         } else if (body && typeof body === 'object') {
+            let errBody = body;
             if (body.error && typeof body.error === 'object') {
-                body = body.error;
+                errBody = body.error;
             }
-            throw Object.assign(new Error(body.message), body);
+            throw Object.assign(new Error(errBody.message), errBody);
         } else {
             throw new Error(body);
         }
