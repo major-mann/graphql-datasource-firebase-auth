@@ -61,7 +61,7 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
         fields: {
             idToken: 'String!',
             refreshToken: 'String!',
-            expiresIn: 'String!',
+            expiresIn: 'Int!',
             tokenType: 'String!',
             userId: 'String!',
             projectId: 'String!'
@@ -186,7 +186,14 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
 
     async function refresh({ args }) {
         const refreshTokenData = await rest.refreshIdToken(args.refreshToken);
-        return refreshTokenData;
+        return {
+            idToken: refreshTokenData.id_token,
+            refreshToken: refreshTokenData.refresh_token,
+            expiresIn: parseInt(refreshTokenData.expires_in),
+            tokenType: refreshTokenData.token_type,
+            userId: refreshTokenData.user_id,
+            projectId: refreshTokenData.project_id
+        };
     }
 
     async function verify({ args }) {
