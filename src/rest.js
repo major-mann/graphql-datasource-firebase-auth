@@ -69,8 +69,9 @@ function createRestInterface(apiKey) {
                 throw new Error(`Invalid response kind ${JSON.stringify(body && body.kind)} received. ` +
                     `Expected ${JSON.stringify(responseType)}`);
             }
-        } else if (typeof body === 'object') {
-            throw Object.assign(new Error(), body);
+        } else if (body && typeof body === 'object') {
+            body = body.error || body;
+            throw Object.assign(new Error(body.message), body);
         } else {
             throw new Error(body);
         }
