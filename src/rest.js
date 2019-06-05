@@ -6,10 +6,10 @@ const VERIFY_CUSTOM_TOKEN_URI = apiKey => `https://www.googleapis.com/identityto
     `?key=${apiKey}`
 const REFRESH_ID_TOKEN_URI = apiKey => `https://securetoken.googleapis.com/v1/token?key=${apiKey}`;
 
-const VERIFY_PASSWORD_RESPONSE = 'identitytoolkit#VerifyPasswordResponse';
-const VERIFY_CUSTOM_TOKEN_RESPONSE = 'identitytoolkit#VerifyCustomTokenResponse';
+const VERIFY_PASSWORD_RESPONSE = `identitytoolkit#VerifyPasswordResponse`;
+const VERIFY_CUSTOM_TOKEN_RESPONSE = `identitytoolkit#VerifyCustomTokenResponse`;
 
-const fetch = require('node-fetch');
+const fetch = require(`node-fetch`);
 
 function createRestInterface(apiKey) {
     const verifyPasswordUri = VERIFY_PASSWORD_URI(apiKey);
@@ -41,7 +41,7 @@ function createRestInterface(apiKey) {
 
     async function refreshIdToken(refreshToken) {
         const response = await post(refreshIdTokenUri, undefined, {
-            grant_type: 'refresh_token',
+            grant_type: `refresh_token`,
             refresh_token: refreshToken
         });
         return response;
@@ -49,16 +49,16 @@ function createRestInterface(apiKey) {
 
     async function post(uri, responseType, data) {
         if (!apiKey) {
-            throw new Error('No API key available. Unable to make call to API');
+            throw new Error(`No API key available. Unable to make call to API`);
         }
 
         const response = await fetch(uri, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
+            method: `POST`,
+            headers: { 'content-type': `application/json` },
             body: JSON.stringify(data)
         });
 
-        const body = isJson(response.headers.get('content-type')) ?
+        const body = isJson(response.headers.get(`content-type`)) ?
             await response.json() :
             await response.text();
 
@@ -69,9 +69,9 @@ function createRestInterface(apiKey) {
                 throw new Error(`Invalid response kind ${JSON.stringify(body && body.kind)} received. ` +
                     `Expected ${JSON.stringify(responseType)}`);
             }
-        } else if (body && typeof body === 'object') {
+        } else if (body && typeof body === `object`) {
             let errBody = body;
-            if (body.error && typeof body.error === 'object') {
+            if (body.error && typeof body.error === `object`) {
                 errBody = body.error;
             }
             throw Object.assign(new Error(errBody.message), errBody);
@@ -82,9 +82,9 @@ function createRestInterface(apiKey) {
 
     function isJson(contentType) {
         if (contentType) {
-            const [type] = contentType.split(';');
+            const [type] = contentType.split(`;`);
             console.log(type);
-            return type && type.trim() === 'application/json';
+            return type && type.trim() === `application/json`;
         } else {
             return false;
         }
