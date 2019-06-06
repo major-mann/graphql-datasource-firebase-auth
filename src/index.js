@@ -172,20 +172,22 @@ async function createGraphqlFirebaseAuthSource({ apiKey, auth }) {
         return restClients[actualApiKey];
     }
 
-    async function loadCollection({ context }) {
+    async function loadCollection(params) {
         let actualAuth;
         if (typeof auth === `function`) {
-            actualAuth = auth({ context });
+            actualAuth = auth({ context: params.context });
         } else {
             actualAuth = auth;
         }
+        let collectionLoader;
         if (collections.has(actualAuth)) {
-            return collections.get(actualAuth);
+            collectionLoader = collections.get(actualAuth);
         } else {
-            const contextualLoadCollection = createFirebaseAuthDatasource({ auth: actualAuth });
-            collections.set(actualAuth, contextualLoadCollection);
-            return contextualLoadCollection;
+            collectionLoader = createFirebaseAuthDatasource({ auth: actualAuth });
+            collections.set(actualAuth, collectionLoader);
         }
+        const result = await collectionLoader(params);
+        return result;
     }
 
     async function signIn({ source }) {
