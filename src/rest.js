@@ -6,7 +6,7 @@ const VERIFY_CUSTOM_TOKEN_URI = apiKey => `https://www.googleapis.com/identityto
     `?key=${apiKey}`
 const REFRESH_ID_TOKEN_URI = apiKey => `https://securetoken.googleapis.com/v1/token?key=${apiKey}`;
 
-const VERIFY_PASSWORD_RESPONSE = `identitytoolkit#VerifyPasswordResponse`;
+const VERIFY_PASSWORD_RESPONSE = `identitytoolkit#SignInWithPasswordResponse`;
 const VERIFY_CUSTOM_TOKEN_RESPONSE = `identitytoolkit#VerifyCustomTokenResponse`;
 
 const fetch = require(`node-fetch`);
