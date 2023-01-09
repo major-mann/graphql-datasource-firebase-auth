@@ -12,7 +12,7 @@
     "license": "MIT",
     "dependencies": {
         "@major-mann/graphql-datasource-base": "^0.0.36",
-        "firebase-admin": "^7.4.0",
+        "firebase-admin": "^11.4.1",
         "node-fetch": "^2.6.0"
     },
     "peerDependencies": {
